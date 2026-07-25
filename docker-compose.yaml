@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   triton:
-    container_name: triton
+    container_name: triton_rc
     image: nvcr.io/nvidia/tritonserver:24.01-py3
     ports:
       - 8000:8000
@@ -10,19 +8,32 @@ services:
       - 8002:8002
     restart: no
     volumes:
-      - ./triton/models:/models
+      - ./triton_rc/models:/models
     entrypoint: /bin/bash
     command:
       - -c
       - |
         pip3 install --no-cache-dir transformers
         exec tritonserver --model-store=/models
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
-              count: 1
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=none
+      - PYTHONUNBUFFERED=1
+
+  streamlit:
+    container_name: streamlit_app
+    image: python:3.10-slim
+    ports:
+      - 8501:8501
+    volumes:
+      - ./streamlit:/app
+    working_dir: /app
+    command:
+      - bash
+      - -c
+      - |
+        pip install --no-cache-dir streamlit numpy tritonclient[grpc]
+        streamlit run app.py --server.address=0.0.0.0 --server.port=8501
+    depends_on:
+      - triton
+    environment:
       - PYTHONUNBUFFERED=1

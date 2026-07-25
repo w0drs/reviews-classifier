@@ -1,6 +1,6 @@
 import streamlit as st
 import numpy as np
-import tritonclient.http as httpclient
+import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException
 
 # Настройка страницы
@@ -14,20 +14,45 @@ st.title("Классификатор отзывов")
 st.markdown("Введите текст для анализа")
 
 
-# Подключение к Triton
-@st.cache_resource
+# Подключение к Triton через gRPC
 def get_client():
-    return httpclient.InferenceServerClient(url="localhost:8000")
+    try:
+        client = grpcclient.InferenceServerClient(url="triton:8001")
+        if client.is_server_live():
+            return client
+        else:
+            st.error("Сервер не отвечает")
+            return None
+    except Exception as e:
+        st.error(f"Ошибка подключения: {e}")
+        return None
 
 
-client = get_client()
+# Создаем клиент в session_state
+if 'client' not in st.session_state:
+    st.session_state.client = get_client()
 
-# Проверка доступности сервера
+client = st.session_state.client
+
+if client is None:
+    st.stop()
+
 try:
     client.is_server_live()
     st.success("Подключение к Triton серверу установлено")
-except:
-    st.error("Не удалось подключиться к Triton серверу (localhost:8000)")
+except Exception as e:
+    st.error(f"Не удалось подключиться к Triton серверу: {e}")
+    st.session_state.client = None
+    st.stop()
+
+try:
+    if client.is_model_ready("text_classifier_ensemble"):
+        st.success("Модель text_classifier_ensemble готова")
+    else:
+        st.error("Модель text_classifier_ensemble не готова")
+        st.stop()
+except Exception as e:
+    st.error(f"Ошибка проверки модели: {e}")
     st.stop()
 
 # Поле ввода текста
@@ -37,63 +62,65 @@ text = st.text_area(
     height=100
 )
 
-# Кнопка для отправки
 if st.button("Классифицировать", type="primary"):
     if not text.strip():
         st.warning("Пожалуйста, введите текст")
         st.stop()
 
-    # Показываем спиннер
     with st.spinner("Классифицируем отзыв..."):
         try:
-            # Подготовка входных данных для Triton
-            # Создаем тензор для текста
-            input_tensor = httpclient.InferInput(
+            input_tensor = grpcclient.InferInput(
                 name="TEXT",
-                shape=[1, 1],  # batch_size=1, 1 текст
+                shape=[1, 1],
                 datatype="BYTES"
             )
-            # Отправляем текст в байтовом формате
             input_tensor.set_data_from_numpy(
                 np.array([[text.encode("utf-8")]], dtype=np.object_)
             )
 
-            # Отправляем запрос к ensemble модели
             response = client.infer(
                 model_name="text_classifier_ensemble",
                 inputs=[input_tensor]
             )
 
-            # 3. Получаем результат
             output = response.as_numpy("OUTPUT")
-            score = float(output[0][0])  # [batch, 1]
-            score = 1 / (1 + np.exp(-score))  # сигмоида для преобразования в вероятность
+            logit = float(output[0][0])
+            prob_negative = 1 / (1 + np.exp(-logit))
+            prob_positive = 1 - prob_negative
 
-            # Отображение результата
+            if prob_negative >= 0.5:
+                label = "Negative"
+                delta_text = "Отрицательный"
+                delta_color = "inverse"
+            else:
+                label = "Positive"
+                delta_text = "Положительный"
+                delta_color = "normal"
+
             st.divider()
             st.subheader("Результат классификации")
 
-            # Создаем две колонки
             col1, col2 = st.columns(2)
 
             with col1:
                 st.metric(
-                    label="Сырой logit",
-                    value=f"{score:.4f}"
+                    label="Вероятность отрицательного",
+                    value=f"{prob_negative:.2%}"
+                )
+                st.metric(
+                    label="Вероятность положительного",
+                    value=f"{prob_positive:.2%}"
                 )
 
             with col2:
-                # Классификация (порог 0.5)
-                label = "Positive" if score >= 0.5 else "Negative"
                 st.metric(
                     label="Класс",
                     value=label,
-                    delta="Положительный" if score >= 0.5 else "Отрицательный",
-                    delta_color="normal" if score >= 0.5 else "inverse"
+                    delta=delta_text,
+                    delta_color=delta_color
                 )
 
-            # Прогресс-бар для наглядности
-            st.progress(score, text=f"Уверенность: {score:.2%}")
+            st.progress(prob_negative, text=f"Уверенность в отрицательном: {prob_negative:.2%}")
 
         except InferenceServerException as e:
             st.error(f"Ошибка сервера: {e}")
@@ -108,20 +135,22 @@ with st.sidebar:
     **Сервер:** Triton Inference Server  
     **Формат:** ONNX  
 
+    **Классы:**
+    - 0 = Positive (положительный)
+    - 1 = Negative (отрицательный)
+
     **Как это работает:**
     1. Текст токенизируется
-    2. Подается в BERT-классификатор
-    3. Выдается вероятность положительного класса
+    2. Подается в классификатор
+    3. Выдается вероятность отрицательного класса
     """)
 
-    # Статус моделей
     st.divider()
     st.subheader("Статус моделей")
     try:
         models = client.get_model_repository_index()
         for model in models:
             if model['name'] in ['text_tokenizer', 'bert_classifier', 'text_classifier_ensemble']:
-                status = client.get_model_config(model['name'])
-                st.success(f"{model['name']}: {status['config']['name']}")
-    except:
-        st.warning("Не удалось получить статус моделей")
+                st.success(f"{model['name']}")
+    except Exception as e:
+        st.warning(f"Не удалось получить статус: {e}")
