@@ -58,6 +58,16 @@ reviews-classifier/
 ---
 
 ## Запуск
+### 1. Скачать обученную модель
+
+Модель в формате ONNX доступна для скачивания по ссылке:  
+[Ссылка на Google Drive](https://drive.google.com/file/d/1ZC3gq70A4hYd0gYseF96TUm2_z77gamJ/view?usp=sharing)
+
+Скачайте файл `model.onnx` и поместите его в директорию:
+- triton_rc/models/bert_classifier/1/model.onnx
+
+### 2. Запустить контейнеры
+
 Запуск тритона с обученной моделью и streamlit интерфейса:
 ```bash
 docker-compose up -d --build
