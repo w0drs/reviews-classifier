@@ -78,3 +78,6 @@ docker-compose up -d --build
 - streamlit_app — веб-интерфейс (порт: `8501`)
 
 Веб интерфес будет по адресу: http://localhost:8501
+
+## Дополнительно
+- Веса обученной модели: [ссылка](https://drive.google.com/file/d/1w2My2ekP8Awa1_VY5vM3zuc7IQ_hPWrP/view?usp=sharing)
