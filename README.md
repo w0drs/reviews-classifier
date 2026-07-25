@@ -35,6 +35,17 @@ reviews-classifier/
     ├── test_triton.ipynb
     └── train_notebook.ipynb
 ```
+Описание:
+---
+| Путь | Описание |
+|------|----------|
+| `docker-compose.yaml` | Docker Compose для Triton + Streamlit |
+| `triton_rc/models/bert_classifier/` | ONNX модель классификатора |
+| `triton_rc/models/text_tokenizer/` | Python бэкенд для токенизации |
+| `triton_rc/models/text_classifier_ensemble/` | Ensemble пайплайн |
+| `streamlit/app.py` | Веб-интерфейс для инференса |
+| `notebooks/train_notebook.ipynb` | Обучение и экспорт модели |
+| `notebooks/test_triton.ipynb` | Тестирование Triton |
 
 ## Особенности
 
