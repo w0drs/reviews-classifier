@@ -14,26 +14,26 @@
 ## Структура проекта
 ```text
 reviews-classifier/
-├── docker-compose.yaml # Docker Compose для Triton + Streamlit
+├── docker-compose.yaml
+├── README.md
 ├── triton_rc/
-│ └── models/
-│ ├── bert_classifier/ # ONNX модель классификатора
-│ │ ├── 1/
-│ │ │ └── model.onnx
-│ │ └── config.pbtxt
-│ ├── text_tokenizer/ # Python бэкенд для токенизации
-│ │ ├── 1/
-│ │ │ └── model.py
-│ │ └── config.pbtxt
-│ └── text_classifier_ensemble/ # Ensemble пайплайн
-│ ├── 1/
-│ └── config.pbtxt
+│   └── models/
+│       ├── bert_classifier/
+│       │   ├── 1/
+│       │   │   └── model.onnx
+│       │   └── config.pbtxt
+│       ├── text_tokenizer/
+│       │   ├── 1/
+│       │   │   └── model.py
+│       │   └── config.pbtxt
+│       └── text_classifier_ensemble/
+│           ├── 1/
+│           └── config.pbtxt
 ├── streamlit/
-│ └── app.py # Веб-интерфейс для инференса
-├── notebooks/ # Jupyter ноутбуки с обучением
-│ ├── test_triton.ipynb
-│ └── train_notebook.ipynb
-└── README.md
+│   └── app.py
+└── notebooks/
+    ├── test_triton.ipynb
+    └── train_notebook.ipynb
 ```
 
 ## Особенности
